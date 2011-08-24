@@ -8,6 +8,5 @@ HOW TO USE:
 -  Select a mesh with a reasonable number of faces.
 -  Push the "Random Face Materials" button.
 
-WARNING: Be careful playing with this as you can cause a lot of unused materials to build up on the project.
-There's a button for "Remove Unused Materials" that I added so you can clear out the materials you generated
-after you're done playing with this script.
+WARNING: Do not use this on a mesh or meshes that amount to a large number of faces.
+You will probably crash Blender if you do.

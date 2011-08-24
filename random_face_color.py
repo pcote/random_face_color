@@ -21,15 +21,20 @@
 bl_info = {
     'name': 'Random Face Color',
     'author': 'Phil Cote, cotejrp1, (http://www.blenderaddons.com)',
-    'version': (0,1),
+    'version': (0,2),
     "blender": (2, 5, 9),
     "api": 39307,
     'location': '',
     'description': 'Generate random diffuse faces on each face of a mesh',
-    'warning': 'I do not advise using this on meshes that have a large number of faces.', # used for warning icon and text in addons panel
+    'warning': 'Don\'t use on meshes that have a large number of faces.',
     'category': 'Add Material'}
 
-
+"""
+How to use:
+- Select a material with no more than one material on it.
+- Hit "t" to open the toolbar.
+- Under "Random Mat Panel", hit the "Random Face Materials" button.
+"""
 
 import bpy
 import time
@@ -44,12 +49,9 @@ def getRandomColor():
     blue = random()
     return red, green, blue
 
-def destroyMaterials():
-    matlist = bpy.data.materials
-    for mat in matlist:
-        matlist.remove( mat )
 
 def makeMaterials( ob ):
+    
     for face in ob.data.faces:
         randcolor = getRandomColor()
         mat = bpy.data.materials.new( "randmat" )
@@ -57,6 +59,7 @@ def makeMaterials( ob ):
 
 
 def assignMats2Ob( ob ):
+    
     mats = bpy.data.materials
     
     # load up the materials into the material slots
@@ -71,14 +74,29 @@ def assignMats2Ob( ob ):
         faces[i].material_index = i
         i+=1
 
+def clearMaterialSlots( ob ):
+    while len( ob.material_slots ) > 0:
+        bpy.ops.object.material_slot_remove()
+         
+def removeUnusedRandoms():
+    unusedRandoms = [ x for x in bpy.data.materials 
+                      if x.name.startswith( "randmat" ) and x.users == 0 ]
+    
+    for mat in unusedRandoms:
+        bpy.data.materials.remove( mat )
+        
 
 class RandomMatOp( bpy.types.Operator ):
     
     bl_label = "Random Face Materials"
     bl_idname = "material.randommat"
+    bl_options = { 'REGISTER', 'UNDO' }
+    
     
     def execute( self, context ):
         ob = context.active_object
+        clearMaterialSlots( ob )
+        removeUnusedRandoms()
         makeMaterials( ob )
         assignMats2Ob( ob )
         return {'FINISHED'}
@@ -86,36 +104,9 @@ class RandomMatOp( bpy.types.Operator ):
     @classmethod    
     def poll( self, context ):
         ob = context.active_object
-        return ob != None and ob.select and len( ob.data.materials ) == 0
+        return ob != None and ob.select
+       
 
-class RemoveMatOp( bpy.types.Operator ):
-    
-    bl_label = "Remove Materials from Object"
-    bl_idname = "material.removeobjectmat"
-    
-    def execute( self, context ):
-        ob = context.active_object        
-        return {'FINISHED'}
-
-    @classmethod
-    def poll( self, context ):
-        ob = context.active_object
-        return ob and ob.select and len( ob.data.materials ) > 0   
-         
-
-class RemoveUnusedMatsOp( bpy.types.Operator ):
-    
-    bl_idname = "material.removeunusedmats"
-    bl_label = "Remove Unused Materials"
-    
-    def execute( self, context ):
-        unusedMats = [ mat for mat in bpy.data.materials if mat.users == 0 ]
-        
-        for mat in unusedMats:
-            bpy.data.materials.remove( mat )
-            
-        return {'FINISHED'}
-    
 
 class RandomMatPanel( bpy.types.Panel ):
     bl_label = "Random Mat Panel"
@@ -126,22 +117,12 @@ class RandomMatPanel( bpy.types.Panel ):
         self.layout.row().operator( "material.randommat" )
         row = self.layout.row()
         
-        # unused label display only seems to work right when nothing is selected.
-        unusedMats = [ mat for mat in bpy.data.materials if mat.users == 0 ]
-        unusedMats = str( len( unusedMats ) )
-        labelDisplay = "%s unused materials" % unusedMats
-        row.label( text = labelDisplay )
-        self.layout.row().operator( "material.removeunusedmats" )
-                
-        
     
 def register():
-    bpy.utils.register_class( RemoveUnusedMatsOp )
     bpy.utils.register_class( RandomMatOp )
     bpy.utils.register_class( RandomMatPanel )
 
 def unregister():
-    bpy.utils.unregister_class( RemoveUnusedMatsOp )
     bpy.utils.unregister_class( RandomMatPanel )
     bpy.utils.unregister_class( RandomMatOp )
 
