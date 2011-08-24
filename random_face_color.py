@@ -34,6 +34,9 @@ How to use:
 - Select a material with no more than one material on it.
 - Hit "t" to open the toolbar.
 - Under "Random Mat Panel", hit the "Random Face Materials" button.
+
+Note: as of this revision, it works best on just one object.
+It works slightly less well when colorizing multiple scene objects.
 """
 
 import bpy
@@ -74,17 +77,27 @@ def assignMats2Ob( ob ):
         faces[i].material_index = i
         i+=1
 
+getUnusedRandoms = lambda : [ x for x in bpy.data.materials 
+                   if x.name.startswith( "randmat" ) and x.users == 0 ]
+
 def clearMaterialSlots( ob ):
     while len( ob.material_slots ) > 0:
         bpy.ops.object.material_slot_remove()
          
 def removeUnusedRandoms():
-    unusedRandoms = [ x for x in bpy.data.materials 
-                      if x.name.startswith( "randmat" ) and x.users == 0 ]
+    unusedRandoms = getUnusedRandoms()
     
     for mat in unusedRandoms:
         bpy.data.materials.remove( mat )
         
+class RemoveUnusedRandomOp( bpy.types.Operator ):
+    bl_label = "Remove Unused Randoms"
+    bl_options = { 'REGISTER'}
+    bl_idname = "material.remove_unusedmats"
+    
+    def execute( self, context ):
+        removeUnusedRandoms()
+        return {'FINISHED'}
 
 class RandomMatOp( bpy.types.Operator ):
     
@@ -116,16 +129,22 @@ class RandomMatPanel( bpy.types.Panel ):
     def draw( self, context ):
         self.layout.row().operator( "material.randommat" )
         row = self.layout.row()
+        self.layout.row().operator( "material.remove_unusedmats" )
+        
+        matCount = len( getUnusedRandoms() )
+        countLabel = "Unused Random Materials: %d" % matCount
+        self.layout.row().label( countLabel )
         
     
 def register():
+    bpy.utils.register_class( RemoveUnusedRandomOp )
     bpy.utils.register_class( RandomMatOp )
     bpy.utils.register_class( RandomMatPanel )
 
 def unregister():
     bpy.utils.unregister_class( RandomMatPanel )
     bpy.utils.unregister_class( RandomMatOp )
-
+    bpy.utils.unregister_class( RemoveUnusedRandomOp )
 
 if __name__ == '__main__':
     register()

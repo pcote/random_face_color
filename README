@@ -8,5 +8,8 @@ HOW TO USE:
 -  Select a mesh with a reasonable number of faces.
 -  Push the "Random Face Materials" button.
 
-WARNING: Do not use this on a mesh or meshes that amount to a large number of faces.
+Remember to click the "Remove Unused Randoms" after you're done playing.
+Otherwise you get a mess of 'randmat' materials left behind in your project.
+
+CAUTION: Do not use this on a mesh or meshes that amount to a large number of faces.
 You will probably crash Blender if you do.
