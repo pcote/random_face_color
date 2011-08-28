@@ -21,7 +21,7 @@
 bl_info = {
     'name': 'Random Face Color',
     'author': 'Phil Cote, cotejrp1, (http://www.blenderaddons.com)',
-    'version': (0,2),
+    'version': (0,3),
     "blender": (2, 5, 9),
     "api": 39307,
     'location': '',
@@ -44,19 +44,31 @@ import time
 from random import random, seed
 
 # start simple be just generating random colors
-
-def getRandomColor():
+def getRandomColor( gray_scale, color_min, color_max ):
     seed( time.time() )
-    red = random()
-    green = random()
-    blue = random()
+    
+    # if the min and max don't make sense, just ignore it.
+    if color_min > color_max:
+        color_min, color_max = 0, 1
+    
+    new_color = lambda : color_min + random() * ( color_max - color_min )
+    
+    if gray_scale:
+        val = new_color()
+        green = blue = red = val
+    else:
+        red = new_color()
+        green = new_color()
+        blue = new_color()
+    
+    
     return red, green, blue
 
 
-def makeMaterials( ob ):
+def makeMaterials( ob, gray_scale, color_min, color_max ):
     
     for face in ob.data.faces:
-        randcolor = getRandomColor()
+        randcolor = getRandomColor( gray_scale, color_min, color_max )
         mat = bpy.data.materials.new( "randmat" )
         mat.diffuse_color = randcolor
 
@@ -80,15 +92,17 @@ def assignMats2Ob( ob ):
 getUnusedRandoms = lambda : [ x for x in bpy.data.materials 
                    if x.name.startswith( "randmat" ) and x.users == 0 ]
 
+
 def clearMaterialSlots( ob ):
     while len( ob.material_slots ) > 0:
         bpy.ops.object.material_slot_remove()
          
+         
 def removeUnusedRandoms():
     unusedRandoms = getUnusedRandoms()
-    
     for mat in unusedRandoms:
         bpy.data.materials.remove( mat )
+        
         
 class RemoveUnusedRandomOp( bpy.types.Operator ):
     bl_label = "Remove Unused Randoms"
@@ -108,9 +122,11 @@ class RandomMatOp( bpy.types.Operator ):
     
     def execute( self, context ):
         ob = context.active_object
+        scn = bpy.context.scene
+        
         clearMaterialSlots( ob )
         removeUnusedRandoms()
-        makeMaterials( ob )
+        makeMaterials( ob, scn.gray_scale, scn.color_min, scn.color_max )
         assignMats2Ob( ob )
         return {'FINISHED'}
     
@@ -120,6 +136,20 @@ class RandomMatOp( bpy.types.Operator ):
         return ob != None and ob.select
        
 
+class KeyRandomColorOp( bpy.types.Operator ):
+    
+    bl_idname = "anim.keyrandomcolor"
+    bl_label = "unimplemented button"
+    bl_description = "Not Yet Implemented"
+    
+    bl_options = { 'REGISTER', 'UNDO' }
+    def execute( self, context ):        
+        return { 'FINISHED'}
+    
+    @classmethod
+    def poll( self, context ):
+        return False #leaving it false til i'm ready to implement
+
 
 class RandomMatPanel( bpy.types.Panel ):
     bl_label = "Random Mat Panel"
@@ -127,16 +157,38 @@ class RandomMatPanel( bpy.types.Panel ):
     bl_space_type = "VIEW_3D"
     
     def draw( self, context ):
-        self.layout.row().operator( "material.randommat" )
-        row = self.layout.row()
-        self.layout.row().operator( "material.remove_unusedmats" )
+        scn = context.scene
+        new_row = self.layout.row
+        
+        new_row().prop( scn, "gray_scale" )
+        new_row().prop( scn, "color_min" )
+        new_row().prop( scn, "color_max" )
+        new_row().operator( "material.randommat" )
+        new_row().operator( "anim.keyrandomcolor" )
+        new_row().operator( "material.remove_unusedmats" )
         
         matCount = len( getUnusedRandoms() )
         countLabel = "Unused Random Materials: %d" % matCount
         self.layout.row().label( countLabel )
         
-    
+from pdb import set_trace
+
 def register():
+    scn_type = bpy.types.Scene
+    BoolProperty = bpy.props.BoolProperty
+    FloatProperty = bpy.props.FloatProperty
+    
+    scn_type.gray_scale = BoolProperty( name="Gray Scale", default = False,
+                                 description = "Gray scale random materials?")
+                               
+    scn_type.color_min = FloatProperty( name = "Color Min", default = 0, min=0,
+                         max=1, description = "Extreme Min for R, G, and B" )
+                         
+    scn_type.color_max = FloatProperty( name = "Color Max", default = 1, min=0,
+                         max=1, description = "Max Color for R, G, and B" )
+    
+    
+    bpy.utils.register_class( KeyRandomColorOp )
     bpy.utils.register_class( RemoveUnusedRandomOp )
     bpy.utils.register_class( RandomMatOp )
     bpy.utils.register_class( RandomMatPanel )
@@ -145,6 +197,7 @@ def unregister():
     bpy.utils.unregister_class( RandomMatPanel )
     bpy.utils.unregister_class( RandomMatOp )
     bpy.utils.unregister_class( RemoveUnusedRandomOp )
+    bpy.utils.unregister_class( KeyRandomColorOp )
 
 if __name__ == '__main__':
     register()

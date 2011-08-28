@@ -6,6 +6,8 @@ A just-fun-fun script that generates random colors and applies it on every color
 HOW TO USE: 
 -  Hit t in the 3D view to bring up your toolbar.
 -  Select a mesh with a reasonable number of faces.
+- Set your minimum and maximum color intensity.
+- Set whether or not you want gray scale of full color.
 -  Push the "Random Face Materials" button.
 
 Remember to click the "Remove Unused Randoms" after you're done playing.
