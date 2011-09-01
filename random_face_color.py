@@ -33,6 +33,8 @@ bl_info = {
 How to use:
 - Select a material with no more than one material on it.
 - Hit "t" to open the toolbar.
+- Set desired options for color min and max intensity as well as whether or not 
+  to gray scale it.
 - Under "Random Mat Panel", hit the "Random Face Materials" button.
 
 Note: as of this revision, it works best on just one object.
@@ -73,21 +75,29 @@ def makeMaterials( ob, gray_scale, color_min, color_max ):
         mat.diffuse_color = randcolor
 
 
+def changeFaceMaterials( ob, gray_scale, color_min, color_max ):
+    print( "call to chang face materials" )
+    
+    mats = ob.data.materials
+    for face in ob.data.faces:
+        randcolor = getRandomColor( gray_scale, color_min, color_max )
+        mats[ face.material_index ].diffuse_color = randcolor
+        
+    
+    
 def assignMats2Ob( ob ):
     
-    mats = bpy.data.materials
+    mats = [ mat for mat in bpy.data.materials if mat.name.startswith( "rand" )]
     
     # load up the materials into the material slots
     for mat in mats:
         bpy.ops.object.material_slot_add()
         ob.active_material = mat
     
-    # tie the loaded up materials o each of the faces
-    i=0
+    # tie the loaded up materials to each of the faces
     faces = ob.data.faces
-    while i < len( faces ):
+    for i in range( len( faces ) ):
         faces[i].material_index = i
-        i+=1
 
 getUnusedRandoms = lambda : [ x for x in bpy.data.materials 
                    if x.name.startswith( "randmat" ) and x.users == 0 ]
@@ -113,6 +123,8 @@ class RemoveUnusedRandomOp( bpy.types.Operator ):
         removeUnusedRandoms()
         return {'FINISHED'}
 
+            
+
 class RandomMatOp( bpy.types.Operator ):
     
     bl_label = "Random Face Materials"
@@ -124,10 +136,15 @@ class RandomMatOp( bpy.types.Operator ):
         ob = context.active_object
         scn = bpy.context.scene
         
-        clearMaterialSlots( ob )
-        removeUnusedRandoms()
-        makeMaterials( ob, scn.gray_scale, scn.color_min, scn.color_max )
-        assignMats2Ob( ob )
+        if len( ob.material_slots ) < len( ob.data.faces ):
+            clearMaterialSlots( ob )
+            removeUnusedRandoms()
+            makeMaterials( ob, scn.gray_scale, scn.color_min, scn.color_max )
+            assignMats2Ob( ob )
+        else:
+            changeFaceMaterials( ob, scn.gray_scale,
+                                 scn.color_min, scn.color_max )
+            
         return {'FINISHED'}
     
     @classmethod    
@@ -139,17 +156,27 @@ class RandomMatOp( bpy.types.Operator ):
 class KeyRandomColorOp( bpy.types.Operator ):
     
     bl_idname = "anim.keyrandomcolor"
-    bl_label = "unimplemented button"
+    bl_label = "Keyframe Colors"
     bl_description = "Not Yet Implemented"
-    
     bl_options = { 'REGISTER', 'UNDO' }
-    def execute( self, context ):        
+    
+    def execute( self, context ): 
+        mats = context.object.data.materials
+        scn = bpy.context.scene
+        for mat in mats:
+            mat.keyframe_insert( "diffuse_color" )
         return { 'FINISHED'}
     
     @classmethod
     def poll( self, context ):
-        return False #leaving it false til i'm ready to implement
-
+        ob = context.active_object
+        
+        if ob == None:
+            return False
+        if len( ob.data.materials ) < len( ob.data.faces ):
+            return False
+        
+        return ob.select
 
 class RandomMatPanel( bpy.types.Panel ):
     bl_label = "Random Mat Panel"
@@ -166,12 +193,13 @@ class RandomMatPanel( bpy.types.Panel ):
         new_row().operator( "material.randommat" )
         new_row().operator( "anim.keyrandomcolor" )
         new_row().operator( "material.remove_unusedmats" )
+        new_row().operator( "material.randommat" )
         
         matCount = len( getUnusedRandoms() )
         countLabel = "Unused Random Materials: %d" % matCount
         self.layout.row().label( countLabel )
         
-from pdb import set_trace
+
 
 def register():
     scn_type = bpy.types.Scene
